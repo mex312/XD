@@ -9,6 +9,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "Object.h"
+#include "GameObject.h"
 
 GLFWwindow* window;
 
@@ -38,7 +40,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		keys[key] = false;
 	}
 }
+bool mouseMoved = false;
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+	if (!mouseMoved) {
+		lastX = xpos;
+		lastY = ypos;
+		mouseMoved = true;
+	}
 	GLfloat xoffset = xpos - lastX;
 	GLfloat yoffset = lastY - ypos;
 	lastX = xpos;
@@ -106,6 +114,25 @@ void handleMovement() {
 
 
 int main() {
+	long long i = 0;
+	while (true) {
+		printf("Iteration %016llx started...\n", i);
+		GameObject obj1("name1");
+		GameObject obj2("name2");
+		GameObject obj3("name3");
+		obj2.transform.setParent(&(obj1.transform));
+		obj3.transform.setParent(&(obj1.transform));
+		std::string name1 = obj2.parent->name;
+		printf("%s\n", name1.c_str());
+		int it = 1;
+		for (auto child : obj1.children) {
+			printf("Child %3d name: %s\n", it, child->name.c_str());
+			it++;
+		}
+		printf("Iteration %016llx finished!\n", i);
+		i++;
+	}
+
 	if (init() == -1) return -1;
 
 	GLShader shader("shader.vert", "shader.frag");
@@ -210,12 +237,9 @@ int main() {
 	GLfloat lastTime = glfwGetTime();
 	while (!glfwWindowShouldClose(window))
 	{
-		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
 		handleMovement();
 
-		// Render
-		// Clear the colorbuffer
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
@@ -229,7 +253,7 @@ int main() {
 		projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
 		view = camera.GetViewMatrix();
 
-		// Draw our first triangle
+
 		shader.use();
 
 		glUniform4f(customColor, 0, 0, 0, 1);
@@ -244,7 +268,7 @@ int main() {
 		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
-		// Swap the screen buffers
+
 		glfwSwapBuffers(window);
 		lastTime = time;
 	}

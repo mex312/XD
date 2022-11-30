@@ -1,6 +1,4 @@
-#ifndef GLSHADER_H
-#define GLSHADER_H
-#define GLEW_STATIC
+#pragma once
 
 #include <GL/glew.h>
 
@@ -13,5 +11,3 @@ public:
 
 	void use();
 };
-
-#endif
