@@ -11,54 +11,65 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Object.h"
 #include "GameObject.h"
+#include "Component.h"
+#include "Core.h"
+#include "Camera.h"
+#include "CameraController.h"
+#include "3DComponents.h"
 
 GLFWwindow* window;
 
 GLfloat sensitivity = 0.2f;
 
-bool keys[1024] = { false };
-
 GLfloat deltaTime;
-
-GLfloat lastX = 400, lastY = 300;
 
 GLCamera camera;
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode) {
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-		glfwSetWindowShouldClose(window, GL_TRUE);
-	}
-
+bool keys1[1024] = { false };
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+	printf("KEY PRESSED\n");
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
 
 	if (action == GLFW_PRESS) {
-		keys[key] = true;
+		keys1[key] = true;
 	}
 	else if (action == GLFW_RELEASE) {
-		keys[key] = false;
+		keys1[key] = false;
 	}
 }
-bool mouseMoved = false;
-void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-	if (!mouseMoved) {
-		lastX = xpos;
-		lastY = ypos;
-		mouseMoved = true;
-	}
-	GLfloat xoffset = xpos - lastX;
-	GLfloat yoffset = lastY - ypos;
-	lastX = xpos;
-	lastY = ypos;
 
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
 
-	camera.ProcessMouseMovement(xoffset, yoffset);
+void initVBO(GLuint VAO, GLuint VBO) {
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (GLvoid*)(5 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(2);
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 }
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
-	camera.ProcessMouseScroll(yoffset);
+void updateStaticVBO(GLuint VAO, GLuint VBO, GLfloat* vertices, GLuint arraySize) {
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+
+	glBufferData(GL_ARRAY_BUFFER, arraySize, vertices, GL_STATIC_DRAW);
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 }
 
 
@@ -84,135 +95,81 @@ int init() {
 		printf("Failed to initialize GLEW\n");
 		return -1;
 	}
-
-	glfwSetKeyCallback(window, key_callback);
-	glfwSetCursorPosCallback(window, mouse_callback);
-	glfwSetScrollCallback(window, scroll_callback);
+	glfwSetKeyCallback(window, Input::key_callback);
+	glfwSetCursorPosCallback(window, Input::mouse_callback);
+	glfwSetScrollCallback(window, Input::scroll_callback);
 
 	int width, height;
 	glfwGetFramebufferSize(window, &width, &height);
 
 	glViewport(0, 0, width, height);
 
+	//glEnable(GL_STENCIL_TEST);
+	//glEnable(GL_ALPHA_TEST);
 	glEnable(GL_DEPTH_TEST);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//glAlphaFunc(GL_GREATER, 0.0f);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+
+	//glDisable(GL_CULL_FACE);
+
+	Core::initCore();
 
 	return 0;
 }
 
 
-void handleMovement() {
-	if (keys[GLFW_KEY_W])
-		camera.ProcessKeyboard(FORWARD, deltaTime);
-	if (keys[GLFW_KEY_S])
-		camera.ProcessKeyboard(BACKWARD, deltaTime);
-	if (keys[GLFW_KEY_A])
-		camera.ProcessKeyboard(LEFT, deltaTime);
-	if (keys[GLFW_KEY_D])
-		camera.ProcessKeyboard(RIGHT, deltaTime);
-}
-
-
 int main() {
-	long long i = 0;
-	while (true) {
-		printf("Iteration %016llx started...\n", i);
-		GameObject obj1("name1");
-		GameObject obj2("name2");
-		GameObject obj3("name3");
-		obj2.transform.setParent(&(obj1.transform));
-		obj3.transform.setParent(&(obj1.transform));
-		std::string name1 = obj2.parent->name;
-		printf("%s\n", name1.c_str());
+	if (init() == -1) return -1;
+
+	//long long i = 0;
+	/*while (!glfwWindowShouldClose(window)) {
+		glfwPollEvents();
+		Core::updateCore();
+		printf("Iteration %016lld started...\n", i);
+		printf("Delta time: %llf\n", Time::deltaTime());
+		GameObject* obj1 = new GameObject("name1");
+		GameObject* obj2 = new GameObject("name2");
+		GameObject* obj3 = new GameObject("name3");
+		//Component* comp1 = new Component(obj1);
+		//printf("%s\n", comp1->gameObject->name.c_str());
+		for (auto component : obj1->components) {
+			//printf("%s\n", component->name.c_str());
+		}
+		obj2->transform.setParent(&(obj1->transform));
+		obj3->transform.setParent(&(obj1->transform));
+		std::string name1 = obj2->parent->name;
+		//printf("%s\n", name1.c_str());
 		int it = 1;
-		for (auto child : obj1.children) {
-			printf("Child %3d name: %s\n", it, child->name.c_str());
+		for (auto child : obj1->children) {
+			//printf("Child %3d name: %s\n", it, child->name.c_str());
 			it++;
 		}
-		printf("Iteration %016llx finished!\n", i);
+		//printf("Iteration %016llx finished!\n", i);
 		i++;
-	}
-
-	if (init() == -1) return -1;
+		delete obj1;
+	}*/
 
 	GLShader shader("shader.vert", "shader.frag");
 
 
-	GLfloat vertices[] = {
-	//  x      y      z      tx    ty
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-	};
-	GLuint indices[] = {
-		0, 1, 3,  // First Triangle
-		1, 2, 3   // Second Triangle
-	};
-
-
-	GLuint VBO, VAO, EBO;
+	GLfloat vertices[504] = { 0 };
+	CubeModel cube1 = CubeModel();
+	CubeModel cube2 = CubeModel();
+	cube2.setSideTexture(CubeModel::FRONT, vec2(0, 1));
+	cube1.writeToVertexArray(vertices, 0, vec3(0, 0, 0));
+	cube2.writeToVertexArray(vertices, 252, vec3(0, 1, 0));
+	GLuint VBO, VAO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
-	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-	glBindVertexArray(VAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-
-	//glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (GLvoid*)(7 * sizeof(GLfloat)));
-	//glEnableVertexAttribArray(2);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
-
-	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
+	initVBO(VAO, VBO);
+	updateStaticVBO(VAO, VBO, vertices, sizeof(GLfloat) * 504);
 
 
 	// Uncommenting this call will result in wireframe polygons.
@@ -220,51 +177,52 @@ int main() {
 
 
 	int width, height;
-	unsigned char* image = SOIL_load_image("container.jpg", &width, &height, 0, SOIL_LOAD_RGB);
+	unsigned char* image = SOIL_load_image("Textures.png", &width, &height, 0, SOIL_LOAD_RGBA);
 
 	GLuint texture;
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glGenerateMipmap(GL_TEXTURE_2D);
 	SOIL_free_image_data(image);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	glm::mat4 projection(1);
-	glm::mat4 view(1);
+
 	glm::mat4 model(1);
-	model = glm::rotate(model, glm::radians(-60.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	//model = glm::rotate(model, glm::radians(-60.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	GLfloat lastTime = glfwGetTime();
+
+	GameObject cameraObject("Main Camera Object");
+	Camera camera("Main Camera", &cameraObject, PERSPECTIVE);
+	CameraController cameraController("Camera Controller", &cameraObject);
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-		handleMovement();
-
+		Core::updateCore();
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		
 		GLfloat time = glfwGetTime();
 		deltaTime = time - lastTime;
-		GLuint customColor = glGetUniformLocation(shader.program, "customColor");
-		GLuint u_projection = glGetUniformLocation(shader.program, "u_projection");
+		//GLuint customColor = glGetUniformLocation(shader.program, "customColor");
 		GLuint u_view= glGetUniformLocation(shader.program, "u_view");
 		GLuint u_model = glGetUniformLocation(shader.program, "u_model");
-
-		projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
-		view = camera.GetViewMatrix();
-
+		GLuint u_texNumInv = glGetUniformLocation(shader.program, "u_texNumInv");
 
 		shader.use();
 
-		glUniform4f(customColor, 0, 0, 0, 1);
-		glUniformMatrix4fv(u_projection, 1, GL_FALSE, glm::value_ptr(projection));
-		glUniformMatrix4fv(u_view, 1, GL_FALSE, glm::value_ptr(view));
+		//glUniform4f(customColor, 0, 0, 0, 1);
+		glUniformMatrix4fv(u_view, 1, GL_FALSE, glm::value_ptr(camera.view));
 		glUniformMatrix4fv(u_model, 1, GL_FALSE, glm::value_ptr(model));
+		glUniform2f(u_texNumInv, 1.0f / 1.0f, 1.0f / 3.0f);
 
 		glBindVertexArray(VAO);
 		glBindTexture(GL_TEXTURE_2D, texture);
 
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices) / 7);
 		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
@@ -275,7 +233,6 @@ int main() {
 
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
 
 	glfwTerminate();
 	return 0;

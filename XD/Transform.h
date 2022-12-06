@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <set>
 
 class GameObject;
@@ -16,20 +17,25 @@ private:
 
 public:
 	glm::vec3 position;
-	glm::vec3 rotation;
 	glm::vec3 scale;
+	glm::quat rotation;
 
-	glm::vec3& getPostionAsGlobal();
-	glm::vec3& getRotationAsGlobal();
-	glm::vec3& getScaleAsGlobal();
+	glm::vec3 getPostionAsGlobal();
+	glm::vec3 getScaleAsGlobal();
+	glm::quat getRotationAsGlobal();
+
+	glm::mat4 getLocalTransformMatrix();
+	glm::mat4 getGlobalTransformMatrix();
 
 	Transform* getParent();
 	GameObject* getGameObject();
 	const std::set<Transform*> getChildren();
 
-	__declspec (property(get = getPostionAsGlobal)) glm::vec3& globalPosition;
-	__declspec (property(get = getPostionAsGlobal)) glm::vec3& globalRotation;
-	__declspec (property(get = getPostionAsGlobal)) glm::vec3& globalScale;
+	__declspec (property(get = getPostionAsGlobal)) glm::vec3 globalPosition;
+	__declspec (property(get = getScaleAsGlobal)) glm::vec3 globalScale;
+	__declspec (property(get = getRotationAsGlobal)) glm::quat globalRotation;
+
+	__declspec (property(get = getLocalTransformMatrix)) glm::mat4 localMatrix;
 
 	__declspec (property(get = getParent)) Transform* parent;
 	__declspec (property(get = getGameObject)) GameObject* gameObject;

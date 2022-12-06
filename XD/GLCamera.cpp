@@ -1,4 +1,5 @@
 #include "GLCamera.h"
+#include <glm/gtc/quaternion.hpp>
 
 glm::mat4 GLCamera::GetViewMatrix()
 {
