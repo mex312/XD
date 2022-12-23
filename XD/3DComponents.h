@@ -2,14 +2,17 @@
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <list>
+#include <vector>
 
-using namespace glm;
+class GLShader;
+class Camera;
 
 struct vertex
 {
 public:
-	vec3 pos;
-	vec2 uv;
+	glm::vec3 pos;
+	glm::vec2 uv;
 };
 
 
@@ -19,128 +22,56 @@ public:
 	vertex vert1;
 	vertex vert2;
 	vertex vert3;
+	bool enabled;
 };
 
-
-
-class Model
+struct model
 {
-protected:
-	polygon* _polygons;
-	bool* _activePolygons;
-	vec2* _texturePositions;
-	unsigned int _polygonsNumber;
+	std::list<polygon> polygons;
 
-public:
+	std::list<polygon> getActivePolygons();
 
-	unsigned int getPolygonsNumber();
-	polygon* getPolygons();
-	bool* getActivePolygons();
-	vec2* getTexturePositions();
+	void merge(const model& other);
 
-	void setActivePolygon(unsigned int num, bool state);
-	void setTexturePosition(unsigned int num, vec2 texPos);
+	static model merge(const model& a, const model& b);
 
-	void writeToVertexArray(float* arr, unsigned int startPoint, vec3 modelPosition);
-
-	~Model();
+	model(std::list<polygon> polys) : polygons(polys) {}
+	model(std::vector<polygon> polys);
+	model() {}
 };
 
-
-class CubeModel : public Model
+struct Mesh
 {
 public:
-	enum CubeSides {
-		UP,
-		DOWN,
-		FRONT,
-		BACK,
-		RIGHT,
-		LEFT
-	};
+	std::vector<float> vertexArray;
+	GLuint VAO, VBO, texture, drawMode;
 
-	void setSideTexture(CubeSides side, vec2 texPos);
-	void setSideActive(CubeSides side, bool state);
+	void setTexture(GLuint texture);
+	void setVertexArray(const std::list<polygon> & polys);
+	void setVertexArray(const std::vector<polygon> & polys);
+	void setVertexArray(const std::list<vertex> & vertices);
+	void setVertexArray(const std::vector<vertex> & vertices);
+	void setVertexArray(const std::vector<float> & vertexArray);
 
-	CubeModel() {
+	void updateVAO();
 
-		_polygons = new polygon[12]{
-			//up
-			{
-				{vec3(1, 1, 0), vec2(1, 0)},
-				{vec3(0, 1, 0), vec2(0, 0)},
-				{vec3(0, 1, 1), vec2(0, 1)},
-			},{
-				{vec3(1, 1, 1), vec2(1, 1)},
-				{vec3(1, 1, 0), vec2(1, 0)},
-				{vec3(0, 1, 1), vec2(0, 1)},
-			},
-			//down
-			{
-				{vec3(0, 0, 0), vec2(0, 1)},
-				{vec3(1, 0, 0), vec2(1, 1)},
-				{vec3(1, 0, 1), vec2(1, 0)},
-			},{
-				{vec3(0, 0, 1), vec2(0, 0)},
-				{vec3(0, 0, 0), vec2(0, 1)},
-				{vec3(1, 0, 1), vec2(1, 0)},
-			},
-			//front
-			{
-				{vec3(0, 0, 1), vec2(0, 1)},
-				{vec3(1, 1, 1), vec2(1, 0)},
-				{vec3(0, 1, 1), vec2(0, 0)},
-			},{
-				{vec3(1, 0, 1), vec2(1, 1)},
-				{vec3(1, 1, 1), vec2(1, 0)},
-				{vec3(0, 0, 1), vec2(0, 1)},
-			},
-			//back
-			{
-				{vec3(0, 1, 0), vec2(1, 0)},
-				{vec3(1, 1, 0), vec2(0, 0)},
-				{vec3(0, 0, 0), vec2(1, 1)},
-			},{
-				{vec3(1, 1, 0), vec2(0, 0)},
-				{vec3(1, 0, 0), vec2(0, 1)},
-				{vec3(0, 0, 0), vec2(1, 1)},
-			},
-			//right
-			{
-				{vec3(1, 1, 0), vec2(1, 0)},
-				{vec3(1, 1, 1), vec2(0, 0)},
-				{vec3(1, 0, 1), vec2(0, 1)},
-			},{
-				{vec3(1, 0, 0), vec2(1, 1)},
-				{vec3(1, 1, 0), vec2(1, 0)},
-				{vec3(1, 0, 1), vec2(0, 1)},
-			},
-			//left
-			{
-				{vec3(0, 1, 1), vec2(1, 0)},
-				{vec3(0, 1, 0), vec2(0, 0)},
-				{vec3(0, 0, 1), vec2(1, 1)},
-			},{
-				{vec3(0, 1, 0), vec2(0, 0)},
-				{vec3(0, 0, 0), vec2(0, 1)},
-				{vec3(0, 0, 1), vec2(1, 1)},
-			}
-		};
-
-		_activePolygons = new bool[12]{
-			true, true,
-			true, true,
-			true, true,
-			true, true,
-			true, true,
-			true, true,
-		};
-
-		_texturePositions = new vec2[12]();
-
-		_polygonsNumber = 12;
-
-	}
-
-	//void writeToVertexArray(float* arr, unsigned int startPoint, vec3 modelPosition);
+	Mesh(const std::list<polygon>& polys, GLuint texture = 0, GLuint drawMode = GL_STATIC_DRAW);
+	Mesh(const std::vector<polygon>& polys = std::vector<polygon>(), GLuint texture = 0, GLuint drawMode = GL_STATIC_DRAW);
 };
+
+namespace Core
+{
+	const unsigned int VERT_SIZE = 5;
+	const unsigned int POLY_SIZE = VERT_SIZE * 3;
+
+	void initVBO(GLuint VAO, GLuint VBO);
+
+	void writeVertexToArray(float* arr, const vertex& vert);
+	void writePolyonToArray(float* arr, const polygon& poly);
+
+	void writePolygonsToVertexArray(const std::list<polygon> & polys, float * vertexArray);
+	void writePolygonsToVertexArray(const std::vector<polygon> & polys, float * vertexArray);
+
+	void writeVerticesToVertexArray(const std::list<vertex>& verts, float* vertexArray);
+	void writeVerticesToVertexArray(const std::vector<vertex>& verts, float* vertexArray);
+}

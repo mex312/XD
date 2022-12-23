@@ -16,6 +16,9 @@
 #include "Camera.h"
 #include "CameraController.h"
 #include "3DComponents.h"
+#include "Renderable.h"
+#include "World.h"
+#include "TexSheet.h"
 
 GLFWwindow* window;
 
@@ -24,6 +27,16 @@ GLfloat sensitivity = 0.2f;
 GLfloat deltaTime;
 
 GLCamera camera;
+
+typedef glm::vec2 vec2;
+typedef glm::vec3 vec3;
+
+vec2 blockTextures[][6] = {
+	{vec2(0, 0), vec2(0, 0), vec2(0, 0), vec2(0, 0), vec2(0, 0), vec2(0, 0)},
+	{vec2(1, 1), vec2(1, 1), vec2(1, 1), vec2(1, 1), vec2(1, 1), vec2(1, 1)},
+	{vec2(2, 2), vec2(2, 2), vec2(2, 2), vec2(2, 2), vec2(2, 2), vec2(2, 2)},
+	{vec2(3, 3), vec2(3, 3), vec2(3, 3), vec2(3, 3), vec2(3, 3), vec2(3, 3)},
+};
 
 bool keys1[1024] = { false };
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -65,7 +78,17 @@ void updateStaticVBO(GLuint VAO, GLuint VBO, GLfloat* vertices, GLuint arraySize
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
 
-	glBufferData(GL_ARRAY_BUFFER, arraySize, vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, arraySize * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+void updateDynamicVBO(GLuint VAO, GLuint VBO, GLfloat* vertices, GLuint arraySize) {
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+
+	glBufferData(GL_ARRAY_BUFFER, arraySize * sizeof(GLfloat), vertices, GL_DYNAMIC_DRAW);
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -127,67 +150,19 @@ int init() {
 int main() {
 	if (init() == -1) return -1;
 
-	//long long i = 0;
-	/*while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
-		Core::updateCore();
-		printf("Iteration %016lld started...\n", i);
-		printf("Delta time: %llf\n", Time::deltaTime());
-		GameObject* obj1 = new GameObject("name1");
-		GameObject* obj2 = new GameObject("name2");
-		GameObject* obj3 = new GameObject("name3");
-		//Component* comp1 = new Component(obj1);
-		//printf("%s\n", comp1->gameObject->name.c_str());
-		for (auto component : obj1->components) {
-			//printf("%s\n", component->name.c_str());
-		}
-		obj2->transform.setParent(&(obj1->transform));
-		obj3->transform.setParent(&(obj1->transform));
-		std::string name1 = obj2->parent->name;
-		//printf("%s\n", name1.c_str());
-		int it = 1;
-		for (auto child : obj1->children) {
-			//printf("Child %3d name: %s\n", it, child->name.c_str());
-			it++;
-		}
-		//printf("Iteration %016llx finished!\n", i);
-		i++;
-		delete obj1;
-	}*/
-
 	GLShader shader("shader.vert", "shader.frag");
+	Core::defaultShader = &shader;
 
-
-	GLfloat vertices[504] = { 0 };
-	CubeModel cube1 = CubeModel();
-	CubeModel cube2 = CubeModel();
-	cube2.setSideTexture(CubeModel::FRONT, vec2(0, 1));
-	cube1.writeToVertexArray(vertices, 0, vec3(0, 0, 0));
-	cube2.writeToVertexArray(vertices, 252, vec3(0, 1, 0));
 	GLuint VBO, VAO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 
 	initVBO(VAO, VBO);
-	updateStaticVBO(VAO, VBO, vertices, sizeof(GLfloat) * 504);
-
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-
-	int width, height;
-	unsigned char* image = SOIL_load_image("Textures.png", &width, &height, 0, SOIL_LOAD_RGBA);
-
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glGenerateMipmap(GL_TEXTURE_2D);
-	SOIL_free_image_data(image);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	tex_sheet tex("Textures.png", glm::uvec2(1, 2));
 
 
 	glm::mat4 model(1);
@@ -196,7 +171,8 @@ int main() {
 
 	GameObject cameraObject("Main Camera Object");
 	Camera camera("Main Camera", &cameraObject, PERSPECTIVE);
-	CameraController cameraController("Camera Controller", &cameraObject);
+
+	//updateDynamicVBO(VAO, VBO, (GLfloat*)Core::getVertexArray(), Core::getVertexArraySize());
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -204,11 +180,16 @@ int main() {
 		Core::updateCore();
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		unsigned int size = Core::getVertexArraySize();
+		GLfloat * vertices = (GLfloat*)Core::getVertexArray();
+
+		updateDynamicVBO(VAO, VBO, vertices, size);
 		
 		GLfloat time = glfwGetTime();
 		deltaTime = time - lastTime;
 		//GLuint customColor = glGetUniformLocation(shader.program, "customColor");
-		GLuint u_view= glGetUniformLocation(shader.program, "u_view");
+		GLuint u_view = glGetUniformLocation(shader.program, "u_view");
 		GLuint u_model = glGetUniformLocation(shader.program, "u_model");
 		GLuint u_texNumInv = glGetUniformLocation(shader.program, "u_texNumInv");
 
@@ -220,9 +201,9 @@ int main() {
 		glUniform2f(u_texNumInv, 1.0f / 1.0f, 1.0f / 3.0f);
 
 		glBindVertexArray(VAO);
-		glBindTexture(GL_TEXTURE_2D, texture);
+		glBindTexture(GL_TEXTURE_2D, tex.getTexture());
 
-		glDrawArrays(GL_TRIANGLES, 0, sizeof(vertices) / 7);
+		glDrawArrays(GL_TRIANGLES, 0, Core::getVertexArraySize() / 7);
 		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 

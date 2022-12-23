@@ -10,4 +10,6 @@ public:
 	GLShader(const GLchar* vertexPath, const GLchar* fragmentPath);
 
 	void use();
+
+	~GLShader() { glDeleteProgram(program); }
 };

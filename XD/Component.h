@@ -21,6 +21,6 @@ public:
 
 	virtual void updateComponent() = 0;
 
-	~Component();
+	virtual ~Component();
 };
 

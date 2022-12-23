@@ -9,6 +9,6 @@ public:
 
 	Object(std::string& name, long long id);
 	Object(const char* name, long long id);
-	~Object();
+	virtual ~Object();
 };
 

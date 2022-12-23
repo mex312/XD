@@ -1,12 +1,34 @@
 #include "Transform.h"
 
+void Transform::recalcMartix()
+{
+	if (parent != nullptr) {
+		parent->recalcMartix();
+	}
+
+	if (isMoved()) {
+		localMat = glm::mat4(1);
+		localMat = glm::translate(glm::scale(localMat, scale) * glm::mat4_cast(rotation), position);
+		if (parent == nullptr) globalMat = localMat;
+		else globalMat = localMat * parent->globalMat;
+	}
+}
+
+bool Transform::isMoved()
+{
+	return rotation != lastRot || position != lastPos || scale != lastScl;
+}
+
 glm::mat4 Transform::getLocalTransformMatrix()
 {
-	glm::mat4 out(1);
-	out = glm::scale(out, scale);
-	out *= glm::mat4_cast(rotation);
-	out = glm::translate(out, position);
-	return out;
+	recalcMartix();
+	return localMat;
+}
+
+glm::mat4 Transform::getGlobalTransformMatrix()
+{
+	recalcMartix();
+	return globalMat;
 }
 
 Transform* Transform::getParent()

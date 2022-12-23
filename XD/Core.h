@@ -1,24 +1,31 @@
 #pragma once
 #include <set>
+#include <list>
+#include <vector>
 #include "Time.h"
 #include "Input.h"
+#include "3DComponents.h"
+
 class GameObject;
 class Component;
+class Renderable;
 
-class Core
+namespace Core
 {
-private:
+	void setActiveShader(GLShader * shader);
+	void setActiveCamera(Camera * camera);
 
-	static void updateAllActiveComponents();
+	void updateAllActiveComponents();
 
-public:
-	static long long getNewId();
-	static void addGameObject(GameObject* gameObject);
-	static void addComponent(Component* component);
-	static void removeGameObject(GameObject* gameObject);
-	static void removeComponent(Component* component);
+	long long getNewId();
+	void addGameObject(GameObject* gameObject);
+	void addComponent(Component* component);
+	void addRenderableToRender(Renderable* model);
+	void removeGameObject(GameObject* gameObject);
+	void removeComponent(Component* component);
+	float const* getVertexArray();
+	unsigned int getVertexArraySize();
 
-	static void updateCore();
-	static void initCore();
+	void updateCore();
+	void initCore();	
 };
-
